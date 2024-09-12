@@ -1,0 +1,72 @@
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chat App</title>
+</head>
+<body>
+  <div id="message-list">
+    <div class="message-item">
+      <span class="name">Bob: </span>
+      <span class="message">message</span>
+    </div>
+  </div>
+  <div>
+    <p><input type="text" id="name"></p>
+    <input type="text" id="content">
+    <button id="sendBtn">Send</button>
+  </div>
+  <script defer>
+    const messageListElm = document.getElementById("message-list")
+    let socket = new WebSocket("ws://localhost:8080/ws")
+    socket.onmessage = (event) => {
+      messageData = JSON.parse(event.data)
+
+      messageItem = document.createElement("div")
+      messageItem.className = "message-item"
+
+      nameElm = document.createElement("span")
+      nameElm.className = "name"
+      nameElm.innerHTML = messageData.name + ": "
+
+      messageContentElm = document.createElement("span")
+      messageContentElm.className = "message"
+      messageContentElm.innerHTML = messageData.content
+
+      messageItem.appendChild(nameElm)
+      messageItem.appendChild(messageContentElm)
+
+      messageListElm.appendChild(messageItem)
+    }
+
+    sendBtnElm = document.getElementById("sendBtn")
+    sendBtnElm.addEventListener("click", function (e) {
+      let contentElm = document.getElementById("content")
+      let name = document.getElementById("name").value
+      if(contentElm.value != '') {
+        socket.send(JSON.stringify({name: name, content: contentElm.value}))
+        contentElm.value = ""
+        contentElm.focus()
+      }
+    });
+  </script>
+  <style>
+    #message-list {
+      border: 1px solid #000;
+      margin: 30px 0;
+      padding: 30px;
+    }
+    .message-item {
+      margin-bottom: 10px;
+    }
+    .name {
+      font-weight: bold;
+      font-size: 16;
+    }
+    .message {
+      font-style: italic;
+      font-size: 13;
+    }
+  </style>
+</body>
+</html>
