@@ -3,58 +3,147 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Chat App</title>
-</head>
-<body>
-  <div id="message-list">
-    <div class="message-item">
-      <span class="name">Bob: </span>
-      <span class="message">message</span>
-    </div>
-  </div>
-  <div>
-    <p><input type="text" id="name"></p>
-    <input type="text" id="content">
-    <button id="sendBtn">Send</button>
-  </div>
-  <script defer>
-    const messageListElm = document.getElementById("message-list")
-    let socket = new WebSocket("ws://localhost:8080/ws")
-    socket.onmessage = (event) => {
-      messageData = JSON.parse(event.data)
+  <script type="text/javascript">
+    window.onload = function () {
+      var conn;
+      var msg = document.getElementById("msg");
+      var log = document.getElementById("log");
+      var name = document.getElementById("name");
 
-      messageItem = document.createElement("div")
-      messageItem.className = "message-item"
+      function createMessageItem(messageData) {
+        if (messageData == undefined) {
+          return null
+        }
+        messageItem = document.createElement("div")
+        messageItem.className = "message-item"
 
-      nameElm = document.createElement("span")
-      nameElm.className = "name"
-      nameElm.innerHTML = messageData.name + ": "
+        nameElm = document.createElement("span")
+        nameElm.className = "name"
+        nameElm.innerHTML = messageData.name + ": "
 
-      messageContentElm = document.createElement("span")
-      messageContentElm.className = "message"
-      messageContentElm.innerHTML = messageData.content
+        messageContentElm = document.createElement("span")
+        messageContentElm.className = "message"
+        messageContentElm.innerHTML = messageData.content
 
-      messageItem.appendChild(nameElm)
-      messageItem.appendChild(messageContentElm)
+        messageItem.appendChild(nameElm)
+        messageItem.appendChild(messageContentElm)
 
-      messageListElm.appendChild(messageItem)
+        return messageItem
+      }
+
+      function appendLog(item) {
+        var doScroll = log.scrollTop > log.scrollHeight - log.clientHeight - 1;
+        log.appendChild(item);
+        if (doScroll) {
+          log.scrollTop = log.scrollHeight - log.clientHeight;
+        }
+      }
+
+
+      // Simulating WebSocket message event
+      function parseDataWebSocketMessage(data) {
+        let listMessages = []
+        let buffer = ""
+        // Append new data to the buffer
+        buffer += data;
+
+        let boundary;
+        // While we have a valid JSON object (starts with '{' and ends with '}')
+        while ((boundary = buffer.indexOf('}')) !== -1) {
+          // Extract the JSON object from the buffer
+          const jsonString = buffer.substring(0, boundary + 1);
+
+          try {
+            // Parse the extracted JSON
+            const parsedObject = JSON.parse(jsonString);
+            listMessages.push(parsedObject)
+
+            // Remove the processed JSON from the buffer
+            buffer = buffer.substring(boundary + 1);
+          } catch (error) {
+            // Handle parsing error (if any)
+            console.error("Failed to parse JSON:", error);
+            break;
+          }
+        }
+
+        return listMessages
+      }
+
+      document.getElementById("form").onsubmit = function () {
+        if (!conn) {
+          return false;
+        }
+        if (!msg.value) {
+          return false;
+        }
+        let data = {
+          name: name.value || "Anonymous",
+          content: msg.value
+        }
+
+        conn.send(JSON.stringify(data));
+        msg.value = "";
+        return false;
+      };
+
+      if (window["WebSocket"]) {
+        conn = new WebSocket("ws://" + document.location.host + "/ws");
+        conn.onclose = function (evt) {
+          var item = document.createElement("div");
+          item.innerHTML = "<b>Connection closed.</b>";
+          appendLog(item);
+        };
+        conn.onmessage = function (evt) {
+          listMessages = parseDataWebSocketMessage(evt.data)
+          for(i = 0; i <= listMessages.length; i++) {
+            elm = createMessageItem(listMessages[i])
+            if (elm != null) {
+              appendLog(elm);
+            }
+          }
+        };
+      } else {
+        var item = document.createElement("div");
+        item.innerHTML = "<b>Your browser does not support WebSockets.</b>";
+        appendLog(item);
+      }
+    };
+  </script>
+  <style type="text/css">
+    html {
+      overflow: hidden;
     }
 
-    sendBtnElm = document.getElementById("sendBtn")
-    sendBtnElm.addEventListener("click", function (e) {
-      let contentElm = document.getElementById("content")
-      let name = document.getElementById("name").value
-      if(contentElm.value != '') {
-        socket.send(JSON.stringify({name: name, content: contentElm.value}))
-        contentElm.value = ""
-        contentElm.focus()
-      }
-    });
-  </script>
-  <style>
-    #message-list {
-      border: 1px solid #000;
-      margin: 30px 0;
-      padding: 30px;
+    body {
+      overflow: hidden;
+      padding: 0;
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      background: gray;
+    }
+
+    #log {
+      background: white;
+      margin: 0;
+      padding: 0.5em 0.5em 0.5em 0.5em;
+      position: absolute;
+      top: 0.5em;
+      left: 0.5em;
+      right: 0.5em;
+      bottom: 3em;
+      overflow: auto;
+    }
+
+    #form {
+      padding: 0 0.5em 0 0.5em;
+      margin: 0;
+      position: absolute;
+      bottom: 1em;
+      left: 0px;
+      width: 100%;
+      overflow: hidden;
     }
     .message-item {
       margin-bottom: 10px;
@@ -68,5 +157,13 @@
       font-size: 13;
     }
   </style>
+</head>
+<body>
+  <div id="log"></div>
+  <form id="form">
+    <input type="text" id="name" placeholder="type your name">
+    <input type="submit" value="Send" />
+    <input type="text" id="msg" size="64" autofocus />
+  </form>
 </body>
 </html>
