@@ -18,14 +18,11 @@ func buyTicket(wg *sync.WaitGroup, userID int, totalTicketRemain *int) {
 	mutex.Unlock()
 }
 
-func main() {
-	var totalTicket int = 200
+func usingMutex(totalTicket int) {
 	var wg sync.WaitGroup
-
 	for userID := 0; userID < 2000; userID++ {
 		wg.Add(1)
 		go buyTicket(&wg, userID, &totalTicket)
 	}
-
 	wg.Wait()
 }
